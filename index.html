@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MOR MERGE</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="vendor/matter.min.js"></script>
+  <script defer src="physics.js"></script>
+  <script defer src="run.js"></script>
+  <script defer src="art.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <section id="mode-screen" class="screen" aria-labelledby="mode-title">
+    <div class="mode-panel">
+      <h1 id="mode-title">MOR MERGE</h1>
+      <p>Drop, stack, and merge your way to Doctor.</p>
+      <button class="mode-choice" data-mode="doctor-two" disabled><strong>Doctor ×2</strong><span>Create two Doctors in one run.</span></button>
+      <button class="mode-choice" data-mode="high-score" disabled><strong>High Score</strong><span>Keep merging until the jar fills.</span></button>
+      <p id="menu-best">Best: 0</p>
+      <p id="asset-status" role="status">Loading temporary art…</p>
+      <p class="menu-help">Drag to aim, release to drop.<br>Keep the pile below the red line.</p>
+    </div>
+  </section>
+  <main hidden>
+    <header><h1>MOR MERGE</h1><span id="mode-label"></span></header>
+    <section class="previews" aria-label="Drop queue">
+      <div><canvas id="current-preview" width="110" height="90" aria-hidden="true"></canvas><span>Current</span><strong id="current-name"></strong></div>
+      <div><canvas id="next-preview" width="110" height="90" aria-hidden="true"></canvas><span>Next</span><strong id="next-name"></strong></div>
+    </section>
+    <div class="toolbar">
+      <div class="hud"><strong>Score <span id="score">0</span></strong><span id="progress">Doctor 0 / 2</span></div>
+      <details class="debug-panel"><summary>Debug</summary><div class="controls">
+        <label>Drop item <select id="tier-select"><option value="random">Random · tiers 1–5</option></select></label>
+        <label><input type="checkbox" id="debug"> Collision debug</label>
+        <p>Tier selection is for testing. Only merged Doctors count toward the goal.</p>
+        <p id="run-stats">Elapsed (wall clock): 0:00.0 · Drops: 0 · Doctor #1: — · Doctor #2: —</p>
+      </div></details>
+      <button id="reset" type="button">Reset</button>
+      <button id="modes" type="button">Modes</button>
+    </div>
+    <p class="instructions">Move to aim; click to drop. On touch, drag to aim and release to drop.<br>Keyboard: ← → to aim, Space to drop. Matching items merge on contact.</p>
+    <div class="playfield">
+      <canvas id="game" width="480" height="740" tabindex="0" aria-label="Merge game jar. Use left and right arrow keys to aim and Space to drop."></canvas>
+    </div>
+    <p id="status" role="status">Loading physics…</p>
+    <p class="note">Doctor is the final tier. Stay below the line; 1.8 seconds above it ends the run.</p>
+    <details class="tier-reference"><summary>Tier / shape reference</summary><ol id="tiers"></ol></details>
+    <noscript>This prototype needs JavaScript enabled.</noscript>
+  </main>
+  <dialog id="result" aria-labelledby="result-title">
+    <h2 id="result-title">GAME OVER</h2>
+    <p id="result-message"></p>
+    <p id="result-score"></p><p id="result-best"></p>
+    <div class="result-actions"><button id="retry" class="primary">Retry</button><button id="back">Back to Mode Select</button></div>
+  </dialog>
+</body>
+</html>

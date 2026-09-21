@@ -46,6 +46,36 @@ dialog[data-ending="game-over"] h2 { color: #b84e4e; }
 .result-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .result-actions button { margin: 0; }
 .primary { background: #2F4F4F; color: #F5F5DC; }
+.nickname-label { margin-bottom: 4px; }
+#nickname { width: 100%; font: 16px system-ui; padding: 9px; border: 1px solid #778899; border-radius: 3px; background: #F5F5DC; color: #2F4F4F; }
+#nickname-error { font-size: 12px; margin: 4px 0; }
+.leaderboard-panel { width: min(100%, 360px); margin: auto 0; flex-shrink: 0; }
+.leaderboard-panel h2 { margin: 0; }
+.local-note, #leaderboard-storage { font-size: 12px; }
+.leaderboard-tabs { display: flex; gap: 8px; }
+.leaderboard-tabs button { flex: 1; margin: 0; min-height: 40px; }
+.leaderboard-tabs [aria-pressed="true"] { background: #87CEEB; font-weight: bold; }
+#leaderboard-rows { columns: 1; padding-left: 26px; }
+#leaderboard-rows li { padding: 5px 0; border-bottom: 1px solid #ADD8E6; }
+#leaderboard-rows li > div { display: flex; justify-content: space-between; gap: 10px; }
+#leaderboard-rows strong { overflow-wrap: anywhere; min-width: 0; }
+#leaderboard-rows small { display: block; font-size: 10px; color: #778899; }
+#leaderboard-back, #menu-leaderboard { min-height: 40px; }
+#clear-leaderboards, #clear-status { grid-column: 1 / -1; }
+#result-ranking { font-size: 12px; font-weight: bold; }
+/* Preserve the entire transparent logo; the existing dark palette supports its white lettering. */
+.brand-logo { display: block; width: 200px; max-width: 100%; height: auto; object-fit: contain; background: #2F4F4F; border-radius: 3px; margin: 8px 0; }
+#result .brand-logo, .leaderboard-panel .brand-logo { width: 164px; }
+#result .result-actions button { min-height: 44px; }
+@media (max-width: 600px) {
+  .mode-panel > p { margin: 7px 0; }
+  .mode-panel .mode-choice { padding: 10px 12px; margin: 8px 0; }
+  .mode-panel .brand-logo { width: 180px; margin: 6px 0; }
+  #result > p { margin: 8px 0; }
+  #result > p:empty { display: none; }
+  #result h2 { margin-bottom: 8px; }
+  .leaderboard-panel .local-note { margin: 6px 0; }
+}
 
 /* Fit the whole playfield into the visible phone screen, including landscape. */
 @media (max-width: 600px), (max-height: 600px) and (pointer: coarse) {

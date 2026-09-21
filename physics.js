@@ -4,7 +4,7 @@
   else root.MorPhysics = factory(root.Matter);
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (Matter) {
   'use strict';
-  const { Body, Bodies, Composite, Engine, Events, Query, Sleeping, Vertices } = Matter;
+  const { Body, Bodies, Collision, Composite, Detector, Engine, Events, Query, Sleeping, Vertices } = Matter;
   const WIDTH = 480, HEIGHT = 740, LEFT = 24, RIGHT = 456, FLOOR = 704, DROP_Y = 82;
   const TIERS = [
     { name: 'Mint Candy', shape: 'circle', w: 26, h: 26, color: '#a5dabb' },
@@ -91,6 +91,59 @@
     Composite.add(engine.world, walls);
     let pending = [], mergeCount = 0;
     const items = () => Composite.allBodies(engine.world).filter(b => !b.isStatic);
+    function eligible(a, b) {
+      return a !== b && !a.isStatic && !b.isStatic && !a.plugin.consumed && !b.plugin.consumed
+        && a.plugin.tier === b.plugin.tier && a.plugin.tier < TIERS.length - 1
+        && Detector.canCollide(a.collisionFilter, b.collisionFilter);
+    }
+    function claimContact(a, b, points) {
+      if (!eligible(a, b) || !points.length) return;
+      const contact = points.reduce((p, v) => ({ x: p.x + v.x / points.length, y: p.y + v.y / points.length }), { x: 0, y: 0 });
+      // Both event contacts and the settled-body check share the same immediate lock.
+      a.plugin.consumed = b.plugin.consumed = true;
+      pending.push({ a, b, tier: a.plugin.tier + 1, contact });
+    }
+    // Numerical roundoff only (1e-8 game pixels), not a merge radius.
+    const CONTACT_EPSILON = 1e-8;
+    function boundaryContact(a, b) {
+      // Matter's SAT rejects zero overlap. Check actual polygon boundaries for
+      // exact vertex/edge contact, including the ends of collinear shared edges.
+      for (const [vertices, edges] of [[a.vertices, b.vertices], [b.vertices, a.vertices]]) {
+        for (const v of vertices) {
+          for (let i = 0; i < edges.length; i++) {
+            const p = edges[i], q = edges[(i + 1) % edges.length];
+            const dx = q.x - p.x, dy = q.y - p.y, lengthSquared = dx * dx + dy * dy;
+            const t = lengthSquared ? Math.max(0, Math.min(1, ((v.x - p.x) * dx + (v.y - p.y) * dy) / lengthSquared)) : 0;
+            const x = p.x + t * dx, y = p.y + t * dy;
+            if ((v.x - x) ** 2 + (v.y - y) ** 2 <= CONTACT_EPSILON ** 2) {
+              return [{ x: (v.x + x) / 2, y: (v.y + y) / 2 }];
+            }
+          }
+        }
+      }
+      return [];
+    }
+    function scanSettledContacts() {
+      // Engine collision events omit sleeping/sleeping pairs. Re-query current
+      // geometry after solving, without waking bodies or trusting cached pairs.
+      const tiers = Array.from({ length: TIERS.length - 1 }, () => []);
+      for (const body of items()) if (!body.plugin.consumed && tiers[body.plugin.tier]) tiers[body.plugin.tier].push(body);
+      for (const bodies of tiers) {
+        bodies.sort((a, b) => a.bounds.min.x - b.bounds.min.x || a.id - b.id);
+        for (let i = 0; i < bodies.length; i++) {
+          const a = bodies[i];
+          for (let j = i + 1; j < bodies.length && !a.plugin.consumed; j++) {
+            const b = bodies[j];
+            if (b.bounds.min.x > a.bounds.max.x + CONTACT_EPSILON) break;
+            if (!eligible(a, b) || a.bounds.max.y + CONTACT_EPSILON < b.bounds.min.y || b.bounds.max.y + CONTACT_EPSILON < a.bounds.min.y) continue;
+            const collision = Collision.collides(a, b);
+            claimContact(a, b, collision
+              ? collision.supports.slice(0, collision.supportCount).filter(Boolean)
+              : boundaryContact(a, b));
+          }
+        }
+      }
+    }
     function queueMerges(event) {
       // Claim both parents immediately, before another contact in this tick can reuse either.
       for (const pair of event.pairs) {
@@ -100,19 +153,13 @@
         if (!a.isStatic && !b.isStatic) a.plugin.hasContact = b.plugin.hasContact = true;
         if (!a.isStatic && b === walls[2]) a.plugin.hasContact = true;
         if (!b.isStatic && a === walls[2]) b.plugin.hasContact = true;
-        if (a.isStatic || b.isStatic || a === b || a.plugin.consumed || b.plugin.consumed) continue;
-        const tier = a.plugin.tier;
-        if (tier !== b.plugin.tier || tier >= TIERS.length - 1) continue;
-        const points = pair.collision.supports.slice(0, pair.collision.supportCount).filter(Boolean);
-        if (!points.length) continue;
-        const contact = points.reduce((p, v) => ({ x: p.x + v.x / points.length, y: p.y + v.y / points.length }), { x: 0, y: 0 });
-        a.plugin.consumed = b.plugin.consumed = true;
-        pending.push({ a, b, tier: tier + 1, contact });
+        claimContact(a, b, pair.collision.supports.slice(0, pair.collision.supportCount).filter(Boolean));
       }
     }
     Events.on(engine, 'collisionStart', queueMerges);
     Events.on(engine, 'collisionActive', queueMerges);
     Events.on(engine, 'afterUpdate', () => {
+      scanSettledContacts();
       const batch = pending;
       pending = [];
       for (const { a, b, tier, contact } of batch) {

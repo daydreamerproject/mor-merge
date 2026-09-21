@@ -140,7 +140,7 @@ test('debug metrics track wall time, accepted drops, creation times, endings and
   run.menu(); clock+=10000; assert.equal(run.elapsedMs,0);
 });
 test('Doctor sprite replacement keeps its existing display and collider dimensions', () => {
-  assert.equal(ART[10].file,'11_doctor_final.png');
+  assert.equal(ART[10].file,'character/11_doctor_final.png');
   assert.deepEqual([ART[10].w,ART[10].h,ART[10].y],[152,140,-2]);
   assert.deepEqual([P.TIERS[10].w,P.TIERS[10].h,P.TIERS[10].shape],[146,132,'oval']);
 });

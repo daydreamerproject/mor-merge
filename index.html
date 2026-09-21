@@ -9,16 +9,22 @@
   <script defer src="physics.js"></script>
   <script defer src="run.js"></script>
   <script defer src="art.js"></script>
+  <script defer src="leaderboards.js"></script>
   <script defer src="game.js"></script>
 </head>
 <body>
   <section id="mode-screen" class="screen" aria-labelledby="mode-title">
     <div class="mode-panel">
       <h1 id="mode-title">MOR MERGE</h1>
+      <img class="brand-logo" src="assets/logo/logo_ZMTV.png" width="3014" height="1686" alt="ZMTV full logo">
       <p>Drop, stack, and merge your way to Doctor.</p>
+      <label class="nickname-label" for="nickname">Nickname</label>
+      <input id="nickname" type="text" maxlength="16" required autocomplete="nickname" enterkeyhint="done" aria-describedby="nickname-error" placeholder="Your nickname">
+      <p id="nickname-error" role="status"></p>
       <button class="mode-choice" data-mode="doctor-two" disabled><strong>Doctor ×2</strong><span>Create two Doctors in one run.</span></button>
       <button class="mode-choice" data-mode="high-score" disabled><strong>High Score</strong><span>Keep merging until the jar fills.</span></button>
       <p id="menu-best">Best: 0</p>
+      <button id="menu-leaderboard">Leaderboard</button>
       <p id="asset-status" role="status">Loading temporary art…</p>
       <p class="menu-help">Drag to aim, release to drop.<br>Keep the pile below the red line.</p>
     </div>
@@ -36,6 +42,8 @@
         <label><input type="checkbox" id="debug"> Collision debug</label>
         <p>Tier selection is for testing. Only merged Doctors count toward the goal.</p>
         <p id="run-stats">Elapsed (wall clock): 0:00.0 · Drops: 0 · Doctor #1: — · Doctor #2: —</p>
+        <button id="clear-leaderboards" type="button">Clear Local Leaderboard Data</button>
+        <p id="clear-status" role="status"></p>
       </div></details>
       <button id="reset" type="button">Reset</button>
       <button id="modes" type="button">Modes</button>
@@ -50,10 +58,32 @@
     <noscript>This prototype needs JavaScript enabled.</noscript>
   </main>
   <dialog id="result" aria-labelledby="result-title">
+    <img class="brand-logo" src="assets/logo/logo_ZMTV.png" width="3014" height="1686" alt="ZMTV full logo">
     <h2 id="result-title">GAME OVER</h2>
     <p id="result-message"></p>
     <p id="result-score"></p><p id="result-best"></p>
-    <div class="result-actions"><button id="retry" class="primary">Retry</button><button id="back">Back to Mode Select</button></div>
+    <p id="result-time"></p><p id="result-ranking" role="status"></p>
+    <div class="result-actions"><button id="retry" class="primary">Retry</button><button id="result-leaderboard">Leaderboard</button><button id="back">Back to Mode Select</button></div>
   </dialog>
+  <dialog id="clear-confirmation" aria-labelledby="clear-title">
+    <h2 id="clear-title">Clear local leaderboards?</h2>
+    <p>Delete both Top 10 lists on this browser? Your nickname and personal best will be kept.</p>
+    <div class="result-actions"><button id="cancel-clear" autofocus>Cancel</button><button id="confirm-clear">Clear Data</button></div>
+  </dialog>
+  <section id="leaderboard-screen" class="screen" aria-labelledby="leaderboard-title" hidden>
+    <div class="leaderboard-panel">
+      <h2 id="leaderboard-title">Leaderboard</h2>
+      <img class="brand-logo" src="assets/logo/logo_ZMTV.png" width="3014" height="1686" alt="ZMTV full logo">
+      <p class="local-note">Top 10 · This device and browser only</p>
+      <div class="leaderboard-tabs" aria-label="Leaderboard category">
+        <button data-board="high-score" aria-pressed="true">High Score</button>
+        <button data-board="doctor-two" aria-pressed="false">Doctor ×2</button>
+      </div>
+      <ol id="leaderboard-rows"></ol>
+      <p id="leaderboard-empty">No runs yet.</p>
+      <p id="leaderboard-storage" role="status"></p>
+      <button id="leaderboard-back">Back</button>
+    </div>
+  </section>
 </body>
 </html>

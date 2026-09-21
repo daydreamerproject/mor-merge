@@ -17,7 +17,7 @@
   window.visualViewport?.addEventListener('resize', sizeViewport);
   sizeViewport();
   const status = document.querySelector('#status');
-  if (!window.Matter || !window.MorPhysics || !window.MorRun || !window.MorArt) {
+  if (!window.Matter || !window.MorPhysics || !window.MorRun || !window.MorArt || !window.MorLeaderboards) {
     status.textContent = 'Matter.js could not load. Check that vendor/matter.min.js is present.';
     document.querySelector('#asset-status').textContent = 'Game files could not load. Refresh after starting npm run dev.';
     return;
@@ -26,6 +26,11 @@
   let storage;
   try { storage = window.localStorage; } catch { storage = { getItem() { throw new Error('Storage unavailable'); } }; }
   const run = R.createRun({ storage }), sim = run.sim;
+  const boards = window.MorLeaderboards.createLeaderboards(storage);
+  const nicknameInput = document.querySelector('#nickname');
+  nicknameInput.value = boards.getNickname();
+  let runNickname = '', runId = '', boardOrigin = 'menu', boardMode = 'high-score';
+  const boardScreen = document.querySelector('#leaderboard-screen');
   const main = document.querySelector('main'), modeScreen = document.querySelector('#mode-screen');
   const result = document.querySelector('#result'), sprites = [];
   let shownEnding = null;
@@ -132,6 +137,17 @@
   });
   select.addEventListener('change', () => { if (run.state === 'playing') queue(); });
   function start(mode) {
+    const name = window.MorLeaderboards.nickname(nicknameInput.value);
+    if (!name) {
+      document.querySelector('#nickname-error').textContent = 'Enter a nickname (1–16 characters).';
+      nicknameInput.setAttribute('aria-invalid', 'true');
+      nicknameInput.focus(); return;
+    }
+    runNickname = boards.setNickname(name); nicknameInput.value = name;
+    runId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    document.querySelector('#nickname-error').textContent = '';
+    nicknameInput.removeAttribute('aria-invalid');
+    boardScreen.hidden = true; main.inert = false;
     run.start(mode); shownEnding = null;
     if (result.open) result.close();
     modeScreen.hidden = true; main.hidden = false;
@@ -145,6 +161,7 @@
     run.menu(); pointer = null; shownEnding = null;
     if (result.open) result.close();
     main.hidden = true; modeScreen.hidden = false;
+    boardScreen.hidden = true; main.inert = false;
     document.querySelector('#menu-best').textContent = `Best: ${run.best}`;
     modeScreen.querySelector('button').focus({ preventScroll: true });
   }
@@ -156,6 +173,49 @@
   document.querySelector('#modes').addEventListener('click', menu);
   document.querySelector('#back').addEventListener('click', menu);
   result.addEventListener('cancel', event => { event.preventDefault(); menu(); });
+  nicknameInput.addEventListener('input', () => {
+    document.querySelector('#nickname-error').textContent = '';
+    nicknameInput.removeAttribute('aria-invalid');
+  });
+  function showBoard(mode) {
+    boardMode = mode;
+    const rows = boards.list(mode), list = document.querySelector('#leaderboard-rows');
+    list.replaceChildren();
+    for (const row of rows) {
+      const li = document.createElement('li'), line = document.createElement('div');
+      const name = document.createElement('strong'), value = document.createElement('span'), detail = document.createElement('small');
+      name.textContent = row.nickname;
+      value.textContent = mode === 'high-score' ? row.score : window.MorLeaderboards.formatTime(row.completionMs);
+      detail.textContent = `${mode === 'doctor-two' ? `Score: ${row.score} · ` : ''}${new Date(row.date).toLocaleString()}`;
+      line.append(name, value); li.append(line, detail); list.append(li);
+    }
+    document.querySelector('#leaderboard-empty').hidden = rows.length > 0;
+    document.querySelector('#leaderboard-storage').textContent = boards.available ? '' : 'Storage unavailable. New results are kept for this session only.';
+    document.querySelectorAll('[data-board]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.board === mode)));
+  }
+  function openBoard(origin) {
+    boardOrigin = origin;
+    if (result.open) result.close();
+    modeScreen.hidden = true; boardScreen.hidden = false; main.inert = true;
+    showBoard(origin === 'result' ? run.mode : boardMode);
+    document.querySelector(`[data-board="${boardMode}"]`).focus({ preventScroll: true });
+  }
+  document.querySelector('#menu-leaderboard').addEventListener('click', () => openBoard('menu'));
+  document.querySelector('#result-leaderboard').addEventListener('click', () => openBoard('result'));
+  document.querySelectorAll('[data-board]').forEach(button => button.addEventListener('click', () => showBoard(button.dataset.board)));
+  document.querySelector('#leaderboard-back').addEventListener('click', () => {
+    boardScreen.hidden = true; main.inert = false;
+    if (boardOrigin === 'result') result.showModal();
+    else { modeScreen.hidden = false; document.querySelector('#menu-leaderboard').focus(); }
+  });
+  const clearConfirmation = document.querySelector('#clear-confirmation');
+  document.querySelector('#clear-leaderboards').addEventListener('click', () => clearConfirmation.showModal());
+  document.querySelector('#cancel-clear').addEventListener('click', () => clearConfirmation.close());
+  document.querySelector('#confirm-clear').addEventListener('click', () => {
+    boards.clear();
+    clearConfirmation.close();
+    document.querySelector('#clear-status').textContent = boards.available ? 'Local leaderboards cleared.' : 'Cleared for this session; browser storage is unavailable.';
+  });
   function formatTime(ms) {
     if (ms === undefined) return '—';
     const tenths = Math.floor(ms / 100);
@@ -170,11 +230,15 @@
     document.querySelector('#progress').textContent = run.mode === 'doctor-two' ? `Doctor ${run.doctorCreatedCount} / 2` : `Best ${run.best}`;
     if (!['clear', 'game-over'].includes(run.state) || shownEnding === run.state) return;
     shownEnding = run.state; pointer = null;
+    const qualified = boards.save({ id: runId, nickname: runNickname, mode: run.mode, state: run.state, score: run.score, elapsedMs: run.elapsedMs });
     result.dataset.ending = run.state;
     document.querySelector('#result-title').textContent = run.state === 'clear' ? 'CLEAR!' : 'GAME OVER';
     document.querySelector('#result-message').textContent = run.state === 'clear' ? 'Doctor ×2 Complete' : 'The pile stayed above the line.';
     document.querySelector('#result-score').textContent = `Score: ${run.score}`;
     document.querySelector('#result-best').textContent = run.mode === 'high-score' ? `Best: ${run.best}${run.storageAvailable ? '' : ' (this session; storage unavailable)'}` : '';
+    document.querySelector('#result-time').textContent = run.state === 'clear' ? `Time: ${window.MorLeaderboards.formatTime(run.elapsedMs)}` : '';
+    document.querySelector('#result-ranking').textContent = (qualified ? (run.mode === 'high-score' ? 'NEW LEADERBOARD SCORE!' : 'NEW BEST TIME!') : '') +
+      (!boards.available ? ' Storage unavailable; results are kept for this session only.' : '');
     document.querySelector('#retry').textContent = run.state === 'clear' ? 'Play Again' : 'Retry';
     result.showModal();
   }

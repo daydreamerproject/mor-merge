@@ -7,6 +7,7 @@ const HOST = '0.0.0.0';
 const PORT = 3000;
 // Only publish the page's assets, never .git, local configuration, or other workspace files.
 const assets = new Map([
+  ['/assets/logo/logo_ZMTV.png', ['assets/logo/logo_ZMTV.png', 'image/png']],
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
@@ -14,6 +15,7 @@ const assets = new Map([
   ['/physics.js', ['physics.js', 'text/javascript; charset=utf-8']],
   ['/run.js', ['run.js', 'text/javascript; charset=utf-8']],
   ['/art.js', ['art.js', 'text/javascript; charset=utf-8']],
+  ['/leaderboards.js', ['leaderboards.js', 'text/javascript; charset=utf-8']],
   ['/vendor/matter.min.js', ['vendor/matter.min.js', 'text/javascript; charset=utf-8']]
 ]);
 for (const { file } of require('./art.js')) assets.set(`/assets/${file}`, [`assets/${file}`, 'image/png']);

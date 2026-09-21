@@ -19,8 +19,10 @@ function request(port, path, method = 'GET') {
   try {
     const port = server.address().port;
     for (const [url, file, mime] of [
+      ['/assets/logo/logo_ZMTV.png', 'assets/logo/logo_ZMTV.png', 'image/png'],
       ['/', 'index.html', 'text/html'], ['/index.html', 'index.html', 'text/html'],
       ['/style.css', 'style.css', 'text/css'], ['/game.js', 'game.js', 'text/javascript'],
+      ['/leaderboards.js', 'leaderboards.js', 'text/javascript'],
       ['/physics.js', 'physics.js', 'text/javascript'], ['/run.js', 'run.js', 'text/javascript'], ['/art.js', 'art.js', 'text/javascript'],
       ...require('./art.js').map(a => [`/assets/${a.file}`, `assets/${a.file}`, 'image/png']),
       ['/vendor/matter.min.js', 'vendor/matter.min.js', 'text/javascript']

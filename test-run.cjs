@@ -108,7 +108,7 @@ test('Doctor ×2 samples the exact weighted 1–6 pool; High Score stays uniform
   const run = R.createRun({random: () => .9}); run.start('doctor-two'); assert.equal(run.rollTier(),5);
   run.start('high-score'); assert.equal(run.rollTier(),4);
 });
-test('Doctors persist; victory locks time and physics for exactly two seconds before clear', () => {
+test('Doctors persist; victory locks time and physics for exactly four seconds before clear', () => {
   let clock = 100;
   const run = R.createRun({now: () => clock});
   run.start('doctor-two'); run.sim.engine.gravity.y = 0;
@@ -119,8 +119,8 @@ test('Doctors persist; victory locks time and physics for exactly two seconds be
   assert.equal(run.elapsedMs,60000); assert.equal(run.score,220);
   const bodies = run.sim.items().map(b => [b.id,b.position.x,b.position.y,b.angle]);
   run.recordDrop(); assert.equal(run.totalDrops,0);
-  clock = 62099; run.step(); assert.equal(run.state,'victory');
-  clock = 62100; run.step(); assert.equal(run.state,'clear');
+  clock = 64099; run.step(); assert.equal(run.state,'victory');
+  clock = 64100; run.step(); assert.equal(run.state,'clear');
   clock = 90000; step(run,5000);
   assert.equal(run.elapsedMs,60000);
   assert.deepEqual(run.sim.items().map(b => [b.id,b.position.x,b.position.y,b.angle]),bodies);

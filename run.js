@@ -4,7 +4,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (P) {
   'use strict';
   const LINE_Y = 180, GRACE_MS = 1800, BEST_KEY = 'mor-merge.best.v1';
-  const VICTORY_DELAY_MS = 2000;
+  const VICTORY_DELAY_MS = 4000;
   const DOCTOR_SPAWN_WEIGHTS = Object.freeze([10, 15, 20, 20, 20, 15]);
   function pickRandomTier(mode, random = Math.random) {
     if (mode !== 'doctor-two') return Math.floor(random() * 5); // Original High Score pool.

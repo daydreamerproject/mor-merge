@@ -4,7 +4,7 @@ Small, local HTML/CSS/JavaScript core-game build, continuing the original physic
 
 ## Modes and run rules
 
-- **Doctor ×2:** create two Doctors through merges in the same run. Both remain physically in the jar and never merge with each other. Doctor #2 immediately stops the completion timer, updates progress to 2/2, and freezes the completed board with gameplay input locked. After a 2-second presentation delay, CLEAR appears with the existing logo, score, and completion time. The delay is excluded from leaderboard time. Direct debug drops do not count.
+- **Doctor ×2:** create two Doctors through merges in the same run. Both remain physically in the jar and never merge with each other. Doctor #2 immediately stops the completion timer, updates progress to 2/2, and freezes the completed board with gameplay input locked. After a 4-second presentation delay, CLEAR appears with the existing logo, score, and completion time. The delay is excluded from leaderboard time. Direct debug drops do not count.
 - **High Score:** no clear condition; keep playing until Game Over. Doctors remain separate final-tier bodies in both modes.
 - Only completed merges award points: creating tiers 2–11 awards 20, 30, 40, 50, 60, 70, 80, 90, 100, and 110 points respectively. Drops award nothing.
 - The red Game Over line is at game-space y=180. An item must continuously extend above it for 1,800 ms of simulation time. Each item has its own grace timer, reset below the line. Fresh drops are exempt until they have entered the jar or touched another item/the floor. Removed/merged parents cannot leave stale timers behind. Play freezes on either ending; Retry/Play Again starts the same mode and Back returns to mode selection.

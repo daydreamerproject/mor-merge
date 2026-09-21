@@ -222,6 +222,9 @@
     return `${Math.floor(tenths / 600)}:${(tenths % 600 / 10).toFixed(1).padStart(4, '0')}`;
   }
   function updateRunUI() {
+    // Lock all gameplay controls while the completed board is on display.
+    main.inert = run.state === 'victory' || !boardScreen.hidden;
+    if (run.state === 'victory') pointer = null;
     const times = run.doctorCreatedTimes;
     const stats = document.querySelector('#run-stats');
     const text = `Elapsed (wall clock): ${formatTime(run.elapsedMs)} · Drops: ${run.totalDrops} · Doctor #1: ${formatTime(times[0])} · Doctor #2: ${formatTime(times[1])}`;

@@ -1,10 +1,10 @@
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./physics.js'), require('./vendor/matter.min.js'));
-  else root.MorRun = factory(root.MorPhysics, root.Matter);
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (P, Matter) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./physics.js'));
+  else root.MorRun = factory(root.MorPhysics);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (P) {
   'use strict';
   const LINE_Y = 180, GRACE_MS = 1800, BEST_KEY = 'mor-merge.best.v1';
-  const COLLECTION_MS = 1250;
+  const VICTORY_DELAY_MS = 2000;
   const DOCTOR_SPAWN_WEIGHTS = Object.freeze([10, 15, 20, 20, 20, 15]);
   function pickRandomTier(mode, random = Math.random) {
     if (mode !== 'doctor-two') return Math.floor(random() * 5); // Original High Score pool.
@@ -19,23 +19,12 @@
   function createRun({ storage, random = Math.random, now = () => performance.now() } = {}) {
     let mode = null, state = 'menu', score = 0, doctors = 0, best = 0, storageAvailable = true;
     let dangerMs = 0;
-    let pendingCollection = null, startedAt = null, endedElapsed = null, totalDrops = 0;
+    let victoryStartedAt = null, startedAt = null, endedElapsed = null, totalDrops = 0;
     let doctorCreatedTimes = [];
     const elapsedMs = () => startedAt === null ? 0 : endedElapsed ?? Math.max(0, now() - startedAt);
     function resetMetrics() {
-      pendingCollection = null; startedAt = null; endedElapsed = null;
+      victoryStartedAt = null; startedAt = null; endedElapsed = null;
       totalDrops = 0; doctorCreatedTimes = [];
-    }
-    function collectDoctor(dt) {
-      if (!pendingCollection) return;
-      pendingCollection.remaining -= dt;
-      if (pendingCollection.remaining > .001) return;
-      const body = pendingCollection.body;
-      pendingCollection = null;
-      Matter.Composite.remove(sim.engine.world, body);
-      overflow.delete(body.id);
-      // Removing a support must let the remaining pile settle naturally.
-      sim.items().forEach(item => Matter.Sleeping.set(item, false));
     }
     const overflow = new Map();
     try {
@@ -47,18 +36,18 @@
       best = score;
       try { storage?.setItem(BEST_KEY, String(best)); } catch { storageAvailable = false; }
     }
-    const sim = P.createSimulation({ random, onMerge({ tier, body }) {
+    const sim = P.createSimulation({ random, onMerge({ tier }) {
       if (state !== 'playing') return false;
       score += (tier + 1) * 10;
       if (tier === 10) {
         doctors++;
         if (doctors <= 2) doctorCreatedTimes.push(elapsedMs());
-        if (mode === 'doctor-two' && doctors === 1) pendingCollection = { body, remaining: COLLECTION_MS };
       }
       saveBest();
       if (mode === 'doctor-two' && doctors === 2) {
-        endedElapsed = elapsedMs();
-        state = 'clear';
+        endedElapsed = doctorCreatedTimes[1];
+        victoryStartedAt = now();
+        state = 'victory';
         return false;
       }
     } });
@@ -80,9 +69,11 @@
       },
       menu() { sim.reset(); state = 'menu'; score = 0; doctors = 0; dangerMs = 0; overflow.clear(); resetMetrics(); },
       step(dt = 1000 / 120) {
-        // Finish the already-scheduled collection even if CLEAR freezes physics
-        // before 1.25 seconds pass. The second Doctor is never scheduled for removal.
-        collectDoctor(dt);
+        // Freeze the completed board; presentation time never contributes to run time.
+        if (state === 'victory') {
+          if (now() - victoryStartedAt >= VICTORY_DELAY_MS) state = 'clear';
+          return;
+        }
         if (state !== 'playing') return;
         sim.step(dt);
         if (state !== 'playing') return; // CLEAR takes effect on the second Doctor creation.
@@ -102,5 +93,5 @@
       }
     };
   }
-  return { createRun, pickRandomTier, DOCTOR_SPAWN_WEIGHTS, COLLECTION_MS, LINE_Y, GRACE_MS, BEST_KEY };
+  return { createRun, pickRandomTier, DOCTOR_SPAWN_WEIGHTS, VICTORY_DELAY_MS, LINE_Y, GRACE_MS, BEST_KEY };
 });

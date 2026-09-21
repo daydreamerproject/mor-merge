@@ -32,16 +32,16 @@ test('three touching matches score only once', () => {
   step(run, 100);
   assert.equal(run.score, 20); assert.equal(run.sim.items().length, 2);
 });
-test('Doctor ×2 ends on precisely the second creation; only the first is later collected', () => {
+test('Doctor ×2 freezes on the second creation and preserves both Doctors', () => {
   const run = start('doctor-two');
   merge(run, 9, 150, 550);
   assert.equal(run.doctorCreatedCount, 1); assert.equal(run.state, 'playing');
   merge(run, 9, 340, 550);
-  assert.equal(run.doctorCreatedCount, 2); assert.equal(run.state, 'clear'); assert.equal(run.score, 220);
+  assert.equal(run.doctorCreatedCount, 2); assert.equal(run.state, 'victory'); assert.equal(run.score, 220);
   assert.equal(run.sim.items().filter(b => b.plugin.tier === 10).length, 2);
   const timestamp = run.sim.engine.timing.timestamp;
   step(run, 2000); assert.equal(run.sim.engine.timing.timestamp, timestamp);
-  assert.equal(run.sim.items().filter(b => b.plugin.tier === 10).length, 1);
+  assert.equal(run.sim.items().filter(b => b.plugin.tier === 10).length, 2);
   assert.equal(run.score, 220); assert.equal(run.doctorCreatedCount, 2);
 });
 test('simultaneous Doctor pairs stop processing as soon as the second Doctor is created', () => {
@@ -49,7 +49,7 @@ test('simultaneous Doctor pairs stop processing as soon as the second Doctor is 
   for (const [x,y] of [[120,300],[340,300],[230,580]]) {
     run.sim.add(9,x-2,y); run.sim.add(9,x+2,y);
   }
-  run.step(); assert.equal(run.state, 'clear'); assert.equal(run.score, 220);
+  run.step(); assert.equal(run.state, 'victory'); assert.equal(run.score, 220);
   assert.equal(run.doctorCreatedCount, 2);
   assert.equal(run.sim.items().filter(b => b.plugin.tier === 10).length, 2);
   assert.equal(run.sim.items().filter(b => b.plugin.tier === 9).length, 2);
@@ -108,25 +108,36 @@ test('Doctor ×2 samples the exact weighted 1–6 pool; High Score stays uniform
   const run = R.createRun({random: () => .9}); run.start('doctor-two'); assert.equal(run.rollTier(),5);
   run.start('high-score'); assert.equal(run.rollTier(),4);
 });
-test('first Doctor stays for 1.25 seconds, then is collected without changing progress or score', () => {
-  const run = start('doctor-two'); merge(run,9,240,550);
-  const first = run.sim.items()[0];
-  const neighbour = run.sim.add(0,150,550); Sleeping.set(neighbour,true);
-  step(run,1200); assert(run.sim.items().includes(first)); assert.equal(run.score,110); assert.equal(run.doctorCreatedCount,1);
-  step(run,60); assert(!run.sim.items().includes(first)); assert.equal(run.score,110); assert.equal(run.doctorCreatedCount,1);
-  assert.equal(run.state,'playing'); assert.equal(neighbour.isSleeping,false);
-  merge(run,9,320,550); assert.equal(run.state,'clear'); assert.equal(run.doctorCreatedCount,2); assert.equal(run.score,220);
-  step(run,3000); assert.equal(run.sim.items().filter(b=>b.plugin.tier===10).length,1);
+test('Doctors persist; victory locks time and physics for exactly two seconds before clear', () => {
+  let clock = 100;
+  const run = R.createRun({now: () => clock});
+  run.start('doctor-two'); run.sim.engine.gravity.y = 0;
+  merge(run,9,150,550); const first = run.sim.items()[0];
+  step(run,5000); assert(run.sim.items().includes(first));
+  clock = 60100; merge(run,9,340,550);
+  assert.equal(run.state,'victory'); assert.equal(run.doctorCreatedCount,2);
+  assert.equal(run.elapsedMs,60000); assert.equal(run.score,220);
+  const bodies = run.sim.items().map(b => [b.id,b.position.x,b.position.y,b.angle]);
+  run.recordDrop(); assert.equal(run.totalDrops,0);
+  clock = 62099; run.step(); assert.equal(run.state,'victory');
+  clock = 62100; run.step(); assert.equal(run.state,'clear');
+  clock = 90000; step(run,5000);
+  assert.equal(run.elapsedMs,60000);
+  assert.deepEqual(run.sim.items().map(b => [b.id,b.position.x,b.position.y,b.angle]),bodies);
+  assert.equal(run.sim.items().filter(b => b.plugin.tier === 10).length,2);
+  const L = require('./leaderboards.js').createLeaderboards(storage());
+  L.save({id:'clear',nickname:'Test',mode:run.mode,state:run.state,score:run.score,elapsedMs:run.elapsedMs});
+  assert.equal(L.list('doctor-two')[0].completionMs,60000);
 });
-test('collection tracks only the merged first Doctor, and restart/menu cancel pending collection', () => {
-  const run = start('doctor-two'); const debugDoctor=run.sim.add(10,120,550);
-  merge(run,9,340,550); step(run,1400);
-  assert(run.sim.items().includes(debugDoctor)); assert.equal(run.doctorCreatedCount,1);
-  run.start('doctor-two'); run.sim.engine.gravity.y=0; merge(run,9,240,550);
-  run.start('high-score'); run.sim.engine.gravity.y=0; merge(run,9,240,550); step(run,2000);
-  assert.equal(run.sim.items().filter(b=>b.plugin.tier===10).length,1);
-  run.start('doctor-two'); run.sim.engine.gravity.y=0; merge(run,9); run.menu(); step(run,2000);
-  assert.equal(run.sim.items().length,0); assert.equal(run.doctorCreatedCount,0);
+test('restart and menu reset the victory presentation deadline', () => {
+  let clock = 0;
+  const run = R.createRun({now: () => clock});
+  run.start('doctor-two'); run.sim.engine.gravity.y=0;
+  merge(run,9,150,550); merge(run,9,340,550); assert.equal(run.state,'victory');
+  run.start('high-score'); clock=3000; run.step(); assert.equal(run.state,'playing');
+  run.start('doctor-two'); run.sim.engine.gravity.y=0;
+  merge(run,9,150,550); merge(run,9,340,550); run.menu();
+  clock=6000; run.step(); assert.equal(run.state,'menu'); assert.equal(run.sim.items().length,0);
 });
 test('debug metrics track wall time, accepted drops, creation times, endings and resets', () => {
   let clock=100;
